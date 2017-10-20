@@ -1,19 +1,25 @@
 package com.wanshuiyu.controller;
 
+import com.wanshuiyu.config.GetHttpSessionConfigurator;
 import org.springframework.stereotype.Component;
 
+import javax.servlet.http.HttpSession;
 import javax.websocket.*;
 import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * Created by Junhe on 2017/10/19.
  */
-@ServerEndpoint(value = "/websocket")
+@ServerEndpoint(value = "/websocket",configurator=GetHttpSessionConfigurator.class)
 @Component
 public class WebSockets {
+
+    //存储存活用户 独立服务器
+    private static Map<String, Session> livingSessions = new ConcurrentHashMap<String, Session>();
 
     //静态变量，用来记录当前在线连接数。应该把它设计成线程安全的。
     private static int onlineCount = 0;
@@ -22,14 +28,17 @@ public class WebSockets {
     private static CopyOnWriteArraySet<WebSockets> webSocketSet = new CopyOnWriteArraySet<WebSockets>();
     //与某个客户端的连接会话，需要通过它来给客户端发送数据
     private Session session;
-    private  static ConcurrentHashMap<String,Session> concurrentHashMap = new ConcurrentHashMap<String,Session>();
     /**
      * 连接建立成功调用的方法*/
     @OnOpen
-    public void onOpen(Session session) {
+    public void onOpen(Session session, EndpointConfig config) {
+        HttpSession httpSession= (HttpSession) config.getUserProperties().get(HttpSession.class.getName());
+       // System.out.println( httpSession.getAttribute("name"));
+        //sessionMap.put(session.getId(), session);
+
         this.session = session;
         webSocketSet.add(this);     //加入set中
-        concurrentHashMap.put(session.getId(),session);
+        livingSessions.put(session.getId(),session);
         System.out.println("sessionID:"+session.getId());
         addOnlineCount();           //在线数加1
         System.out.println("有新连接加入！当前在线人数为" + getOnlineCount());
@@ -44,7 +53,11 @@ public class WebSockets {
      * 连接关闭调用的方法
      */
     @OnClose
-    public void onClose() {
+    public void onClose(Session session) {
+        String sessionId = session.getId();
+        //当前的Session 移除
+        livingSessions.remove(sessionId);
+
         webSocketSet.remove(this);  //从set中删除
         subOnlineCount();           //在线数减1
         System.out.println("有一连接关闭！当前在线人数为" + getOnlineCount());
