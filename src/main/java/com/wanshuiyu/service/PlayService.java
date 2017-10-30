@@ -1,5 +1,7 @@
 package com.wanshuiyu.service;
 
+import com.wanshuiyu.model.Player;
+
 import javax.websocket.Session;
 import java.util.Map;
 
@@ -9,7 +11,7 @@ import java.util.Map;
 public class PlayService {
 
 
-    public void play(Map<String,Session> users){
+    public void play(Player player){
         //准备
 
 
